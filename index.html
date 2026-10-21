@@ -135,7 +135,6 @@
     .main-title-wrap { display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; }
     .board-header h1 { font-size: 1.65rem; letter-spacing: 2px; color: var(--chalk-yellow); font-weight: 900; }
     .badge-pill { font-size: 0.82rem; background: var(--highlight-bg); color: var(--chalk-cyan); padding: 3px 10px; border-radius: 20px; border: 1px solid var(--chalk-cyan); font-weight: 700; }
-    .meta-bar { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-sub); margin-top: 8px; padding: 0 4px; flex-wrap: wrap; gap: 8px; }
     .board-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: stretch; }
     @media (max-width: 1100px) { .board-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 680px) { .board-grid { grid-template-columns: 1fr; } }
@@ -224,6 +223,10 @@
         <span class="brand-tag" style="font-size:1.05rem; padding:4px 10px;">展氏新解</span>
         <h1>布洛酸鹼理論(一)</h1>
         <span class="badge-pill">阿瑞尼斯學說 vs. 布忍斯特-洛瑞學說</span>
+        <!-- 點閱次數計數器標籤 -->
+        <span class="badge-pill" style="border-color: var(--chalk-yellow); color: var(--chalk-yellow);">
+          👀 點閱次數：<span id="pageViews">載入中...</span>
+        </span>
       </div>
     </div>
 
@@ -585,7 +588,9 @@
     function toggleTheme() { document.body.classList.toggle('theme-paper'); }
     function toggleCloze() {
       document.body.classList.toggle('cloze-mode');
-      document.querySelectorAll('.cloze').forEach(el => el.classList.remove('revealed'));
+      document.querySelectorAll('.cloze').forEach(el => {
+        el.classList.remove('revealed');
+      });
     }
     document.addEventListener('click', function(e) {
       if (document.body.classList.contains('cloze-mode') && e.target.classList.contains('cloze')) {
@@ -593,6 +598,42 @@
       }
     });
     renderQuiz();
+
+    // ==========================================
+    // 講義點閱次數自動累加與顯示 (防快取穩定版)
+    // ==========================================
+    (function recordPageView() {
+      const counterEl = document.getElementById("pageViews");
+      if (!counterEl) return;
+
+      const timestamp = new Date().getTime();
+      const pageKey = "y-chinchan-acid-base-2";
+      const apiUrl = `https://api.counterapi.dev/v1/zhan-chemistry/${pageKey}/up?t=${timestamp}`;
+
+      fetch(apiUrl)
+        .then(res => {
+          if (!res.ok) throw new Error("API 狀態碼異常");
+          return res.json();
+        })
+        .then(data => {
+          if (data && typeof data.count !== "undefined") {
+            counterEl.innerText = Number(data.count).toLocaleString();
+          } else {
+            updateLocalFallback();
+          }
+        })
+        .catch(err => {
+          console.warn("線上計數異常，切換至本地增量：", err);
+          updateLocalFallback();
+        });
+
+      function updateLocalFallback() {
+        let count = parseInt(localStorage.getItem("local_pv_" + pageKey) || "0", 10);
+        count += 1;
+        localStorage.setItem("local_pv_" + pageKey, count);
+        counterEl.innerText = count.toLocaleString();
+      }
+    })();
   </script>
 </body>
 </html>
